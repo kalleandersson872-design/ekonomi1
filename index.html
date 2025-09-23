@@ -47,11 +47,16 @@
     .btn.primary{background:linear-gradient(180deg,#1f62ff,#1140bf); border-color:rgba(255,255,255,0.12)}
     .btn.ghost{background:transparent}
     .scale .option{
-      background:rgba(255,255,255,0.04); padding:16px 12px; text-align:center; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
-      cursor:pointer; user-select:none; transition:transform 120ms ease,border 120ms ease,background 120ms ease;
+      background:rgba(255,255,255,0.04);
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      cursor:pointer; user-select:none;
+      transition:transform 120ms ease,border 120ms ease,background 120ms ease;
+      font-size:18px; font-weight:700; line-height:1;
+      display:flex; align-items:center; justify-content:center; height:58px;
     }
-    .scale .option:hover{transform:translateY(-1px)}
-    .scale .option.active{outline:2px solid var(--accent); background:rgba(96,165,250,0.15); border-color:rgba(96,165,250,0.6)}
+    .scale .option:hover{transform:translateY(-1px); background:rgba(255,255,255,0.06)}
+    .scale .option.active{outline:2px solid var(--accent); background:rgba(96,165,250,0.18); border-color:rgba(96,165,250,0.6)}
     .legend{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px}
     .actions{display:flex; justify-content:space-between; gap:10px; margin-top:22px}
     .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px; background:#111827; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.08)}
@@ -89,9 +94,7 @@
           <div class="q-theme" id="qId">Fråga 1/25</div>
         </div>
         <div class="question" id="qText">…</div>
-        <div class="scale" id="scale">
-          <!-- options injected -->
-        </div>
+        <div class="scale" id="scale"></div>
         <div class="legend"><span>1 = Stämmer inte alls</span><span>5 = Stämmer helt</span></div>
         <div class="actions">
           <button class="btn ghost" id="prevBtn" disabled>Föregående</button>
@@ -116,9 +119,7 @@
         </div>
 
         <h3 style="margin:14px 0 6px 0; font-size:16px">Delskalor</h3>
-        <div class="result" id="subscalesContainer">
-          <!-- subscale rows injected -->
-        </div>
+        <div class="result" id="subscalesContainer"></div>
 
         <div class="actions" style="margin-top:8px">
           <button class="btn ghost" id="restartBtn">Starta om</button>
@@ -127,15 +128,69 @@
       </div>
 
       <div class="footer">
-        <div class="muted">Byggt på grunden i “fysisk hälsa test frågor”. QoL-kurva borttagen. Endast export till .txt.</div>
+        <div class="muted">QoL-kurva borttagen. Export till .txt med alla frågor och svar.</div>
         <div><a class="btn-link" href="#" id="jumpUnanswered">Hoppa till obesvarad</a></div>
       </div>
     </div>
   </div>
 
   <script>
-    // ======= Datamodell: 25 frågor baserade på de 10 ursprungliga ekonomifrågorna =======
-    // Teman (för delskalor)
+    // ---------- Skala-etiketter (för tooltip + export) ----------
+    const LABELS = {
+      1: "Stämmer inte alls",
+      2: "Stämmer lite",
+      3: "Neutral / delvis",
+      4: "Stämmer mycket",
+      5: "Stämmer helt"
+    };
+
+    // ---------- Frågor (25) ----------
+    const QUESTIONS = [
+      // Överblick & Budget
+      {id:1, theme:"Överblick & Budget", text:"Jag har en tydlig överblick över inkomster och utgifter.", reverse:false},
+      {id:2, theme:"Överblick & Budget", text:"Jag följer en budget som jag uppdaterar minst varje månad.", reverse:false},
+      {id:3, theme:"Överblick & Budget", text:"Jag kan snabbt se vart pengarna tar vägen under en vanlig månad.", reverse:false},
+
+      // Buffert & Sparande
+      {id:4, theme:"Buffert & Sparande", text:"Jag har en buffert som täcker minst tre månaders utgifter.", reverse:false},
+      {id:5, theme:"Buffert & Sparande", text:"Jag sparar regelbundet (t.ex. autogiro) varje månad.", reverse:false},
+      {id:6, theme:"Buffert & Sparande", text:"Min buffert gör att jag känner mig trygg om något oväntat händer.", reverse:false},
+
+      // Skulder & Åtaganden
+      {id:7, theme:"Skulder & Åtaganden", text:"Jag har full kontroll över alla mina lån och krediter.", reverse:false},
+      {id:8, theme:"Skulder & Åtaganden", text:"Jag betalar alltid mer än minimibeloppet på dyra skulder när det är möjligt.", reverse:false},
+      {id:9, theme:"Skulder & Åtaganden", text:"Jag jämför och förhandlar räntor/avgifter vid behov.", reverse:false},
+      {id:10, theme:"Skulder & Åtaganden", text:"Jag undviker att ta nya konsumtionskrediter.", reverse:false},
+
+      // Likviditet & Räkningar
+      {id:11, theme:"Likviditet & Räkningar", text:"Jag betalar alla räkningar i tid varje månad.", reverse:false},
+      {id:12, theme:"Likviditet & Räkningar", text:"Jag har sällan kassaflödesproblem i slutet av månaden.", reverse:false},
+      {id:13, theme:"Likviditet & Räkningar", text:"Jag har marginal för oförutsedda småutgifter i vardagen.", reverse:false},
+
+      // Stress & Trygghet (reverse)
+      {id:14, theme:"Stress & Trygghet", text:"Jag oroar mig ofta för pengar.", reverse:true},
+      {id:15, theme:"Stress & Trygghet", text:"Min ekonomiska situation skapar stress i mitt liv.", reverse:true},
+      {id:16, theme:"Stress & Trygghet", text:"Jag känner mig osäker på min ekonomiska framtid.", reverse:true},
+      {id:17, theme:"Stress & Trygghet", text:"Ekonomiska beslut ger mig ofta ångest.", reverse:true},
+
+      // Plan & Mål
+      {id:18, theme:"Plan & Mål", text:"Jag har en långsiktig plan för min ekonomi (mål, tidshorisont, strategi).", reverse:false},
+      {id:19, theme:"Plan & Mål", text:"Jag följer upp min plan och justerar den vid behov.", reverse:false},
+      {id:20, theme:"Plan & Mål", text:"Jag känner att min ekonomiska situation är stabil.", reverse:false},
+
+      // Konsumtion & Livskvalitet
+      {id:21, theme:"Konsumtion & Livskvalitet", text:"Jag har råd med sådant som ger mig livskvalitet (fritid, upplevelser).", reverse:false},
+      {id:22, theme:"Konsumtion & Livskvalitet", text:"Jag känner mig nöjd med min ekonomiska situation just nu.", reverse:false},
+
+      // Risk & Skydd
+      {id:23, theme:"Risk & Skydd", text:"Jag har adekvata försäkringar (t.ex. hem, inkomst) och vet vad de täcker.", reverse:false},
+
+      // Inkomst & Resiliens
+      {id:24, theme:"Inkomst & Resiliens", text:"Jag har en plan för inkomstbortfall (t.ex. a-kassa, reservplan).", reverse:false},
+      {id:25, theme:"Inkomst & Resiliens", text:"Jag har möjligheter att öka intäkter vid behov (t.ex. extraarbete eller förhandling).", reverse:false},
+    ];
+
+    // ---------- Delskalor ----------
     const THEMES = {
       "Överblick & Budget": [1,2,3],
       "Buffert & Sparande": [4,5,6],
@@ -148,86 +203,18 @@
       "Inkomst & Resiliens": [24,25],
     };
 
-    // reverse=true innebär att högre svar = sämre (t.ex. oro/stress) och ska inverteras vid scoring
-    const QUESTIONS = [
-      // Överblick & Budget (bygger på "överblick" + "stabil")
-      {id:1, theme:"Överblick & Budget", text:"Jag har en tydlig överblick över inkomster och utgifter.", reverse:false},
-      {id:2, theme:"Överblick & Budget", text:"Jag följer en budget som jag uppdaterar minst varje månad.", reverse:false},
-      {id:3, theme:"Överblick & Budget", text:"Jag kan snabbt se vart pengarna tar vägen under en vanlig månad.", reverse:false},
-
-      // Buffert & Sparande (bygger på buffert)
-      {id:4, theme:"Buffert & Sparande", text:"Jag har en buffert som täcker minst tre månaders utgifter.", reverse:false},
-      {id:5, theme:"Buffert & Sparande", text:"Jag sparar regelbundet (t.ex. autogiro) varje månad.", reverse:false},
-      {id:6, theme:"Buffert & Sparande", text:"Min buffert gör att jag känner mig trygg om något oväntat händer.", reverse:false},
-
-      // Skulder & Åtaganden (bygger på “kontroll över skulder”)
-      {id:7, theme:"Skulder & Åtaganden", text:"Jag har full kontroll över alla mina lån och krediter.", reverse:false},
-      {id:8, theme:"Skulder & Åtaganden", text:"Jag betalar alltid mer än minimibeloppet på dyra skulder när det är möjligt.", reverse:false},
-      {id:9, theme:"Skulder & Åtaganden", text:"Jag jämför och förhandlar räntor/avgifter vid behov.", reverse:false},
-      {id:10, theme:"Skulder & Åtaganden", text:"Jag undviker att ta nya konsumtionskrediter.", reverse:false},
-
-      // Likviditet & Räkningar (bygger på “betala räkningar i tid”)
-      {id:11, theme:"Likviditet & Räkningar", text:"Jag betalar alla räkningar i tid varje månad.", reverse:false},
-      {id:12, theme:"Likviditet & Räkningar", text:"Jag har sällan kassaflödesproblem i slutet av månaden.", reverse:false},
-      {id:13, theme:"Likviditet & Räkningar", text:"Jag har marginal för oförutsedda småutgifter i vardagen.", reverse:false},
-
-      // Stress & Trygghet (bygger på “oro/stress för pengar” – reverse)
-      {id:14, theme:"Stress & Trygghet", text:"Jag oroar mig ofta för pengar.", reverse:true},
-      {id:15, theme:"Stress & Trygghet", text:"Min ekonomiska situation skapar stress i mitt liv.", reverse:true},
-      {id:16, theme:"Stress & Trygghet", text:"Jag känner mig osäker på min ekonomiska framtid.", reverse:true},
-      {id:17, theme:"Stress & Trygghet", text:"Ekonomiska beslut ger mig ofta ångest.", reverse:true},
-
-      // Plan & Mål (bygger på “långsiktig plan” + “stabil situation”)
-      {id:18, theme:"Plan & Mål", text:"Jag har en långsiktig plan för min ekonomi (mål, tidshorisont, strategi).", reverse:false},
-      {id:19, theme:"Plan & Mål", text:"Jag följer upp min plan och justerar den vid behov.", reverse:false},
-      {id:20, theme:"Plan & Mål", text:"Jag känner att min ekonomiska situation är stabil.", reverse:false},
-
-      // Konsumtion & Livskvalitet (bygger på “har råd med livskvalitet” + “nöjd just nu”)
-      {id:21, theme:"Konsumtion & Livskvalitet", text:"Jag har råd med sådant som ger mig livskvalitet (fritid, upplevelser).", reverse:false},
-      {id:22, theme:"Konsumtion & Livskvalitet", text:"Jag känner mig nöjd med min ekonomiska situation just nu.", reverse:false},
-
-      // Risk & Skydd (fördjupning: försäkring, buffert)
-      {id:23, theme:"Risk & Skydd", text:"Jag har adekvata försäkringar (t.ex. hem, inkomst) och vet vad de täcker.", reverse:false},
-
-      // Inkomst & Resiliens (fördjupning: inkomstspridning, extra jobb)
-      {id:24, theme:"Inkomst & Resiliens", text:"Jag har en plan för inkomstbortfall (t.ex. a-kassa, reservplan).", reverse:false},
-      {id:25, theme:"Inkomst & Resiliens", text:"Jag har möjligheter att öka intäkter vid behov (t.ex. extraarbete eller förhandling).", reverse:false},
-    ];
-
-    // ======= Tillstånd =======
-    const state = {
-      index: 0,
-      answers: Array(QUESTIONS.length).fill(null) // värden 1..5
-    };
-
-    // ======= Hjälpfunktioner =======
+    // ---------- State + helpers ----------
+    const state = { index:0, answers:Array(QUESTIONS.length).fill(null) };
     const $ = sel => document.querySelector(sel);
-    const progressEl = $('#progress');
-    const counterEl = $('#counter');
-    const qThemeEl = $('#qTheme');
-    const qIdEl = $('#qId');
-    const qTextEl = $('#qText');
+    const progressEl = $('#progress'), counterEl = $('#counter');
+    const qThemeEl = $('#qTheme'), qIdEl = $('#qId'), qTextEl = $('#qText');
     const scaleEl = $('#scale');
-    const prevBtn = $('#prevBtn');
-    const nextBtn = $('#nextBtn');
-    const clearBtn = $('#clearBtn');
-    const questionView = $('#questionView');
-    const resultView = $('#resultView');
-    const totalBar = $('#totalBar');
-    const totalTag = $('#totalTag');
-    const totalText = $('#totalText');
+    const prevBtn = $('#prevBtn'), nextBtn = $('#nextBtn'), clearBtn = $('#clearBtn');
+    const questionView = $('#questionView'), resultView = $('#resultView');
+    const totalBar = $('#totalBar'), totalTag = $('#totalTag'), totalText = $('#totalText');
     const subscalesContainer = $('#subscalesContainer');
-    const restartBtn = $('#restartBtn');
-    const exportBtn = $('#exportBtn');
+    const restartBtn = $('#restartBtn'), exportBtn = $('#exportBtn');
     const jumpUnanswered = $('#jumpUnanswered');
-
-    const LABELS = {
-      1: "Stämmer inte alls",
-      2: "Stämmer lite",
-      3: "Neutral / delvis",
-      4: "Stämmer mycket",
-      5: "Stämmer helt"
-    };
 
     function percentComplete(){
       const answered = state.answers.filter(v => v!==null).length;
@@ -235,7 +222,7 @@
     }
     function updateProgress(){
       const pct = Math.round(((state.index)/QUESTIONS.length)*100);
-      progressEl.style.width = Math.max(pct, (percentComplete())) + '%';
+      progressEl.style.width = Math.max(pct, percentComplete()) + '%';
       counterEl.textContent = `${Math.min(state.index+1, QUESTIONS.length)} / ${QUESTIONS.length}`;
     }
 
@@ -250,13 +237,12 @@
         const el = document.createElement('button');
         el.type = 'button';
         el.className = 'option';
-        el.setAttribute('aria-label', `${i} – ${LABELS[i]}`);
-        el.innerHTML = `<div style="font-size:18px; font-weight:700">${i}</div><div class="muted" style="margin-top:2px">${LABELS[i]}</div>`;
+        el.textContent = i;             // Endast siffror
+        el.title = `${i} – ${LABELS[i]}`; // Tooltip
         if(state.answers[state.index] === i) el.classList.add('active');
         el.addEventListener('click', ()=>{
           state.answers[state.index] = i;
-          renderQuestion(); // refresh selected state
-          // auto-advance after short delay
+          renderQuestion();
           setTimeout(()=>next(), 120);
         });
         scaleEl.appendChild(el);
@@ -269,43 +255,24 @@
     }
 
     function next(){
-      // måste besvara innan nästa
-      if(state.answers[state.index] === null){
-        shake(scaleEl);
-        return;
-      }
-      if(state.index < QUESTIONS.length-1){
-        state.index++;
-        renderQuestion();
-      } else {
-        showResult();
-      }
+      if(state.answers[state.index] === null){ shake(scaleEl); return; }
+      if(state.index < QUESTIONS.length-1){ state.index++; renderQuestion(); }
+      else { showResult(); }
     }
-    function prev(){
-      if(state.index>0){ state.index--; renderQuestion(); }
-    }
-    function clearAnswer(){
-      state.answers[state.index] = null;
-      renderQuestion();
-    }
+    function prev(){ if(state.index>0){ state.index--; renderQuestion(); } }
+    function clearAnswer(){ state.answers[state.index] = null; renderQuestion(); }
     function shake(node){
       node.style.transform = 'translateX(0)';
-      node.animate([
-        { transform: 'translateX(0px)' },
-        { transform: 'translateX(-6px)' },
-        { transform: 'translateX(6px)' },
-        { transform: 'translateX(0px)' }
-      ], { duration: 180 });
+      node.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:180});
     }
 
-    // Scoring: 1..5 -> 0..100. Reverse items inverteras (1->5, 2->4, 3->3, 4->2, 5->1)
+    // 1..5 -> 0..100. Reverse-items inverteras.
     function toPercent(value, reverse){
-      const v = reverse ? (6 - value) : value; // invert
-      return ((v - 1) / 4) * 100; // 0..100
+      const v = reverse ? (6 - value) : value;
+      return ((v - 1) / 4) * 100;
     }
 
     function showResult(){
-      // kontrollera att allt är svarat
       if(state.answers.some(v=>v===null)){
         const idx = state.answers.findIndex(v=>v===null);
         state.index = idx>=0 ? idx : 0;
@@ -315,7 +282,6 @@
       questionView.classList.add('hidden');
       resultView.classList.remove('hidden');
 
-      // Total
       const percents = state.answers.map((v, i)=>toPercent(v, QUESTIONS[i].reverse));
       const total = Math.round(percents.reduce((a,b)=>a+b,0)/percents.length);
       totalBar.style.width = total + '%';
@@ -324,10 +290,8 @@
       totalTag.textContent = total>=75 ? 'Stark' : total>=50 ? 'Stabil' : 'Sårbar';
       totalText.textContent = `Totalpoäng: ${total}/100`;
 
-      // Delskalor
       subscalesContainer.innerHTML = '';
       Object.entries(THEMES).forEach(([theme, ids])=>{
-        // ids refererar till frågenummer (1-index)
         const idxs = ids.map(n=>n-1);
         const vals = idxs.map(i => toPercent(state.answers[i], QUESTIONS[i].reverse));
         const avg = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
@@ -342,7 +306,6 @@
         subscalesContainer.appendChild(row);
       });
 
-      // fokusera export-knappen
       exportBtn.focus();
     }
 
@@ -354,7 +317,6 @@
       renderQuestion();
     }
 
-    // Export .txt
     function exportTxt(){
       const ts = new Date();
       const pad = n => String(n).padStart(2,'0');
@@ -395,11 +357,9 @@
       a.remove();
     }
 
-    function firstUnansweredIndex(){
-      return state.answers.findIndex(v=>v===null);
-    }
+    function firstUnansweredIndex(){ return state.answers.findIndex(v=>v===null); }
 
-    // ======= Event listeners =======
+    // ---------- Events ----------
     nextBtn.addEventListener('click', next);
     prevBtn.addEventListener('click', prev);
     clearBtn.addEventListener('click', clearAnswer);
@@ -416,7 +376,7 @@
       }
     });
 
-    // Keyboard shortcuts: 1..5 = svar, ArrowLeft/Right = navigering, Enter = nästa
+    // Tangentbord: 1–5 = svar, pilar = navigering, Enter = nästa
     document.addEventListener('keydown', (e)=>{
       if(!resultView.classList.contains('hidden')){
         if(e.key === 'Enter'){ exportBtn.focus(); }
