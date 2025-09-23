@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ekonomi – Skattningstest (25 frågor)</title>
+  <style>
+    :root{
+      --bg:#0b0f1a; --card:#131a2a; --muted:#6b7280; --text:#f3f4f6; --accent:#60a5fa; --ok:#34d399; --warn:#f59e0b; --bad:#ef4444;
+      --bar:#2563eb; --bar-muted:#1f2937;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+      background:linear-gradient(120deg,#0b0f1a 0%, #0f172a 100%); color:var(--text);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{width:100%; max-width:860px}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    header{
+      padding:22px 24px; border-bottom:1px solid rgba(255,255,255,0.06);
+      display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    h1{font-size:20px; margin:0; font-weight:700; letter-spacing:0.2px}
+    .muted{color:var(--muted); font-size:14px}
+    .bar{
+      height:10px; width:100%; background:var(--bar-muted); border-radius:999px; overflow:hidden;
+      box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .bar>span{display:block; height:100%; width:0%; background:linear-gradient(90deg,#1d4ed8,#3b82f6); transition:width 240ms ease}
+    .content{padding:24px}
+    .q-meta{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px}
+    .q-theme{font-size:13px; color:var(--muted)}
+    .question{font-size:22px; line-height:1.35; margin:6px 0 14px}
+    .scale{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:8px}
+    .btn{
+      appearance:none; border:none; border-radius:12px; padding:14px 16px; font-weight:600;
+      color:var(--text); cursor:pointer; background:#0f172a; border:1px solid rgba(255,255,255,0.08);
+      transition:transform 120ms ease, background 120ms ease, border 120ms ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(180deg,#1f62ff,#1140bf); border-color:rgba(255,255,255,0.12)}
+    .btn.ghost{background:transparent}
+    .scale .option{
+      background:rgba(255,255,255,0.04); padding:16px 12px; text-align:center; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
+      cursor:pointer; user-select:none; transition:transform 120ms ease,border 120ms ease,background 120ms ease;
+    }
+    .scale .option:hover{transform:translateY(-1px)}
+    .scale .option.active{outline:2px solid var(--accent); background:rgba(96,165,250,0.15); border-color:rgba(96,165,250,0.6)}
+    .legend{display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px}
+    .actions{display:flex; justify-content:space-between; gap:10px; margin-top:22px}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px; background:#111827; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.08)}
+    .result{
+      display:grid; gap:14px; margin-top:6px;
+      background:rgba(0,0,0,0.25); padding:18px; border:1px solid rgba(255,255,255,0.06); border-radius:12px;
+    }
+    .meter{height:12px; background:var(--bar-muted); border-radius:999px; overflow:hidden}
+    .meter>span{display:block; height:100%; width:0%; transition:width 300ms ease}
+    .tag{font-size:12px; color:white; padding:2px 8px; border-radius:999px; display:inline-block}
+    .tag.ok{background:var(--ok)} .tag.warn{background:var(--warn)} .tag.bad{background:var(--bad)}
+    .hidden{display:none}
+    .footer{padding:18px 24px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between}
+    a.btn-link{color:var(--accent); text-decoration:none}
+    .sr{position:absolute; left:-9999px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card" id="app">
+      <header>
+        <div>
+          <h1>Ekonomi – Skattningstest (25 frågor)</h1>
+          <div class="muted">En fråga i taget. Svara 1–5. <span class="kbd">1–5</span> fungerar som kortkommandon.</div>
+        </div>
+        <div style="min-width:220px">
+          <div class="bar" aria-label="Framsteg"><span id="progress"></span></div>
+          <div class="muted" id="counter" style="text-align:right; margin-top:6px">0 / 25</div>
+        </div>
+      </header>
+
+      <div class="content" id="questionView">
+        <div class="q-meta">
+          <div class="q-theme" id="qTheme">Tema</div>
+          <div class="q-theme" id="qId">Fråga 1/25</div>
+        </div>
+        <div class="question" id="qText">…</div>
+        <div class="scale" id="scale">
+          <!-- options injected -->
+        </div>
+        <div class="legend"><span>1 = Stämmer inte alls</span><span>5 = Stämmer helt</span></div>
+        <div class="actions">
+          <button class="btn ghost" id="prevBtn" disabled>Föregående</button>
+          <div style="display:flex; gap:10px">
+            <button class="btn" id="clearBtn">Rensa</button>
+            <button class="btn primary" id="nextBtn">Nästa</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="content hidden" id="resultView" aria-live="polite">
+        <h2 style="margin:0 0 8px 0; font-size:20px">Resultat</h2>
+        <div class="muted">Skala 0–100 beräknad som genomsnitt (1–5) omräknat till procent.</div>
+
+        <div class="result">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div><strong>Totalt ekonomiskt läge</strong></div>
+            <div id="totalTag" class="tag">—</div>
+          </div>
+          <div class="meter" aria-label="Totalpoäng"><span id="totalBar" style="background:linear-gradient(90deg,#059669,#10b981)"></span></div>
+          <div class="muted" id="totalText">—</div>
+        </div>
+
+        <h3 style="margin:14px 0 6px 0; font-size:16px">Delskalor</h3>
+        <div class="result" id="subscalesContainer">
+          <!-- subscale rows injected -->
+        </div>
+
+        <div class="actions" style="margin-top:8px">
+          <button class="btn ghost" id="restartBtn">Starta om</button>
+          <button class="btn primary" id="exportBtn">Exportera resultat (.txt)</button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="muted">Byggt på grunden i “fysisk hälsa test frågor”. QoL-kurva borttagen. Endast export till .txt.</div>
+        <div><a class="btn-link" href="#" id="jumpUnanswered">Hoppa till obesvarad</a></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ======= Datamodell: 25 frågor baserade på de 10 ursprungliga ekonomifrågorna =======
+    // Teman (för delskalor)
+    const THEMES = {
+      "Överblick & Budget": [1,2,3],
+      "Buffert & Sparande": [4,5,6],
+      "Skulder & Åtaganden": [7,8,9,10],
+      "Likviditet & Räkningar": [11,12,13],
+      "Stress & Trygghet": [14,15,16,17],
+      "Plan & Mål": [18,19,20],
+      "Konsumtion & Livskvalitet": [21,22],
+      "Risk & Skydd": [23],
+      "Inkomst & Resiliens": [24,25],
+    };
+
+    // reverse=true innebär att högre svar = sämre (t.ex. oro/stress) och ska inverteras vid scoring
+    const QUESTIONS = [
+      // Överblick & Budget (bygger på "överblick" + "stabil")
+      {id:1, theme:"Överblick & Budget", text:"Jag har en tydlig överblick över inkomster och utgifter.", reverse:false},
+      {id:2, theme:"Överblick & Budget", text:"Jag följer en budget som jag uppdaterar minst varje månad.", reverse:false},
+      {id:3, theme:"Överblick & Budget", text:"Jag kan snabbt se vart pengarna tar vägen under en vanlig månad.", reverse:false},
+
+      // Buffert & Sparande (bygger på buffert)
+      {id:4, theme:"Buffert & Sparande", text:"Jag har en buffert som täcker minst tre månaders utgifter.", reverse:false},
+      {id:5, theme:"Buffert & Sparande", text:"Jag sparar regelbundet (t.ex. autogiro) varje månad.", reverse:false},
+      {id:6, theme:"Buffert & Sparande", text:"Min buffert gör att jag känner mig trygg om något oväntat händer.", reverse:false},
+
+      // Skulder & Åtaganden (bygger på “kontroll över skulder”)
+      {id:7, theme:"Skulder & Åtaganden", text:"Jag har full kontroll över alla mina lån och krediter.", reverse:false},
+      {id:8, theme:"Skulder & Åtaganden", text:"Jag betalar alltid mer än minimibeloppet på dyra skulder när det är möjligt.", reverse:false},
+      {id:9, theme:"Skulder & Åtaganden", text:"Jag jämför och förhandlar räntor/avgifter vid behov.", reverse:false},
+      {id:10, theme:"Skulder & Åtaganden", text:"Jag undviker att ta nya konsumtionskrediter.", reverse:false},
+
+      // Likviditet & Räkningar (bygger på “betala räkningar i tid”)
+      {id:11, theme:"Likviditet & Räkningar", text:"Jag betalar alla räkningar i tid varje månad.", reverse:false},
+      {id:12, theme:"Likviditet & Räkningar", text:"Jag har sällan kassaflödesproblem i slutet av månaden.", reverse:false},
+      {id:13, theme:"Likviditet & Räkningar", text:"Jag har marginal för oförutsedda småutgifter i vardagen.", reverse:false},
+
+      // Stress & Trygghet (bygger på “oro/stress för pengar” – reverse)
+      {id:14, theme:"Stress & Trygghet", text:"Jag oroar mig ofta för pengar.", reverse:true},
+      {id:15, theme:"Stress & Trygghet", text:"Min ekonomiska situation skapar stress i mitt liv.", reverse:true},
+      {id:16, theme:"Stress & Trygghet", text:"Jag känner mig osäker på min ekonomiska framtid.", reverse:true},
+      {id:17, theme:"Stress & Trygghet", text:"Ekonomiska beslut ger mig ofta ångest.", reverse:true},
+
+      // Plan & Mål (bygger på “långsiktig plan” + “stabil situation”)
+      {id:18, theme:"Plan & Mål", text:"Jag har en långsiktig plan för min ekonomi (mål, tidshorisont, strategi).", reverse:false},
+      {id:19, theme:"Plan & Mål", text:"Jag följer upp min plan och justerar den vid behov.", reverse:false},
+      {id:20, theme:"Plan & Mål", text:"Jag känner att min ekonomiska situation är stabil.", reverse:false},
+
+      // Konsumtion & Livskvalitet (bygger på “har råd med livskvalitet” + “nöjd just nu”)
+      {id:21, theme:"Konsumtion & Livskvalitet", text:"Jag har råd med sådant som ger mig livskvalitet (fritid, upplevelser).", reverse:false},
+      {id:22, theme:"Konsumtion & Livskvalitet", text:"Jag känner mig nöjd med min ekonomiska situation just nu.", reverse:false},
+
+      // Risk & Skydd (fördjupning: försäkring, buffert)
+      {id:23, theme:"Risk & Skydd", text:"Jag har adekvata försäkringar (t.ex. hem, inkomst) och vet vad de täcker.", reverse:false},
+
+      // Inkomst & Resiliens (fördjupning: inkomstspridning, extra jobb)
+      {id:24, theme:"Inkomst & Resiliens", text:"Jag har en plan för inkomstbortfall (t.ex. a-kassa, reservplan).", reverse:false},
+      {id:25, theme:"Inkomst & Resiliens", text:"Jag har möjligheter att öka intäkter vid behov (t.ex. extraarbete eller förhandling).", reverse:false},
+    ];
+
+    // ======= Tillstånd =======
+    const state = {
+      index: 0,
+      answers: Array(QUESTIONS.length).fill(null) // värden 1..5
+    };
+
+    // ======= Hjälpfunktioner =======
+    const $ = sel => document.querySelector(sel);
+    const progressEl = $('#progress');
+    const counterEl = $('#counter');
+    const qThemeEl = $('#qTheme');
+    const qIdEl = $('#qId');
+    const qTextEl = $('#qText');
+    const scaleEl = $('#scale');
+    const prevBtn = $('#prevBtn');
+    const nextBtn = $('#nextBtn');
+    const clearBtn = $('#clearBtn');
+    const questionView = $('#questionView');
+    const resultView = $('#resultView');
+    const totalBar = $('#totalBar');
+    const totalTag = $('#totalTag');
+    const totalText = $('#totalText');
+    const subscalesContainer = $('#subscalesContainer');
+    const restartBtn = $('#restartBtn');
+    const exportBtn = $('#exportBtn');
+    const jumpUnanswered = $('#jumpUnanswered');
+
+    const LABELS = {
+      1: "Stämmer inte alls",
+      2: "Stämmer lite",
+      3: "Neutral / delvis",
+      4: "Stämmer mycket",
+      5: "Stämmer helt"
+    };
+
+    function percentComplete(){
+      const answered = state.answers.filter(v => v!==null).length;
+      return Math.round((answered/QUESTIONS.length)*100);
+    }
+    function updateProgress(){
+      const pct = Math.round(((state.index)/QUESTIONS.length)*100);
+      progressEl.style.width = Math.max(pct, (percentComplete())) + '%';
+      counterEl.textContent = `${Math.min(state.index+1, QUESTIONS.length)} / ${QUESTIONS.length}`;
+    }
+
+    function renderQuestion(){
+      const q = QUESTIONS[state.index];
+      qThemeEl.textContent = q.theme;
+      qIdEl.textContent = `Fråga ${state.index+1}/${QUESTIONS.length}`;
+      qTextEl.textContent = q.text;
+
+      scaleEl.innerHTML = '';
+      for(let i=1;i<=5;i++){
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'option';
+        el.setAttribute('aria-label', `${i} – ${LABELS[i]}`);
+        el.innerHTML = `<div style="font-size:18px; font-weight:700">${i}</div><div class="muted" style="margin-top:2px">${LABELS[i]}</div>`;
+        if(state.answers[state.index] === i) el.classList.add('active');
+        el.addEventListener('click', ()=>{
+          state.answers[state.index] = i;
+          renderQuestion(); // refresh selected state
+          // auto-advance after short delay
+          setTimeout(()=>next(), 120);
+        });
+        scaleEl.appendChild(el);
+      }
+
+      prevBtn.disabled = state.index === 0;
+      clearBtn.disabled = state.answers[state.index] === null;
+      nextBtn.textContent = (state.index === QUESTIONS.length-1) ? 'Visa resultat' : 'Nästa';
+      updateProgress();
+    }
+
+    function next(){
+      // måste besvara innan nästa
+      if(state.answers[state.index] === null){
+        shake(scaleEl);
+        return;
+      }
+      if(state.index < QUESTIONS.length-1){
+        state.index++;
+        renderQuestion();
+      } else {
+        showResult();
+      }
+    }
+    function prev(){
+      if(state.index>0){ state.index--; renderQuestion(); }
+    }
+    function clearAnswer(){
+      state.answers[state.index] = null;
+      renderQuestion();
+    }
+    function shake(node){
+      node.style.transform = 'translateX(0)';
+      node.animate([
+        { transform: 'translateX(0px)' },
+        { transform: 'translateX(-6px)' },
+        { transform: 'translateX(6px)' },
+        { transform: 'translateX(0px)' }
+      ], { duration: 180 });
+    }
+
+    // Scoring: 1..5 -> 0..100. Reverse items inverteras (1->5, 2->4, 3->3, 4->2, 5->1)
+    function toPercent(value, reverse){
+      const v = reverse ? (6 - value) : value; // invert
+      return ((v - 1) / 4) * 100; // 0..100
+    }
+
+    function showResult(){
+      // kontrollera att allt är svarat
+      if(state.answers.some(v=>v===null)){
+        const idx = state.answers.findIndex(v=>v===null);
+        state.index = idx>=0 ? idx : 0;
+        renderQuestion();
+        return;
+      }
+      questionView.classList.add('hidden');
+      resultView.classList.remove('hidden');
+
+      // Total
+      const percents = state.answers.map((v, i)=>toPercent(v, QUESTIONS[i].reverse));
+      const total = Math.round(percents.reduce((a,b)=>a+b,0)/percents.length);
+      totalBar.style.width = total + '%';
+      const tag = total>=75 ? 'ok' : total>=50 ? 'warn' : 'bad';
+      totalTag.className = `tag ${tag}`;
+      totalTag.textContent = total>=75 ? 'Stark' : total>=50 ? 'Stabil' : 'Sårbar';
+      totalText.textContent = `Totalpoäng: ${total}/100`;
+
+      // Delskalor
+      subscalesContainer.innerHTML = '';
+      Object.entries(THEMES).forEach(([theme, ids])=>{
+        // ids refererar till frågenummer (1-index)
+        const idxs = ids.map(n=>n-1);
+        const vals = idxs.map(i => toPercent(state.answers[i], QUESTIONS[i].reverse));
+        const avg = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        const row = document.createElement('div');
+        row.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px">
+            <div><strong>${theme}</strong></div>
+            <div class="tag ${avg>=75 ? 'ok' : avg>=50 ? 'warn' : 'bad'}">${avg}/100</div>
+          </div>
+          <div class="meter"><span style="width:${avg}%; background:${avg>=75 ? 'linear-gradient(90deg,#059669,#10b981)' : avg>=50 ? 'linear-gradient(90deg,#b45309,#f59e0b)' : 'linear-gradient(90deg,#b91c1c,#ef4444)'}"></span></div>
+        `;
+        subscalesContainer.appendChild(row);
+      });
+
+      // fokusera export-knappen
+      exportBtn.focus();
+    }
+
+    function restart(){
+      state.index = 0;
+      state.answers = Array(QUESTIONS.length).fill(null);
+      resultView.classList.add('hidden');
+      questionView.classList.remove('hidden');
+      renderQuestion();
+    }
+
+    // Export .txt
+    function exportTxt(){
+      const ts = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const stamp = `${ts.getFullYear()}-${pad(ts.getMonth()+1)}-${pad(ts.getDate())} ${pad(ts.getHours())}:${pad(ts.getMinutes())}`;
+
+      const percents = state.answers.map((v, i)=>toPercent(v, QUESTIONS[i].reverse));
+      const total = Math.round(percents.reduce((a,b)=>a+b,0)/percents.length);
+
+      let lines = [];
+      lines.push(`Ekonomi – Skattningstest (25 frågor)`);
+      lines.push(`Datum: ${stamp}`);
+      lines.push(``);
+      lines.push(`Svar per fråga`);
+      QUESTIONS.forEach((q, i)=>{
+        const val = state.answers[i];
+        const label = LABELS[val];
+        lines.push(`Fråga ${q.id} | ${q.theme} | ${q.text} — Svar: ${val} (${label})`);
+      });
+      lines.push(``);
+      lines.push(`Totalpoäng: ${total}/100`);
+      lines.push(``);
+      lines.push(`Delskalor:`);
+      Object.entries(THEMES).forEach(([theme, ids])=>{
+        const idxs = ids.map(n=>n-1);
+        const vals = idxs.map(i => toPercent(state.answers[i], QUESTIONS[i].reverse));
+        const avg = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+        lines.push(`- ${theme}: ${avg}/100`);
+      });
+
+      const blob = new Blob([lines.join('\n')], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ekonomi-test_${ts.getFullYear()}-${pad(ts.getMonth()+1)}-${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    }
+
+    function firstUnansweredIndex(){
+      return state.answers.findIndex(v=>v===null);
+    }
+
+    // ======= Event listeners =======
+    nextBtn.addEventListener('click', next);
+    prevBtn.addEventListener('click', prev);
+    clearBtn.addEventListener('click', clearAnswer);
+    restartBtn.addEventListener('click', restart);
+    exportBtn.addEventListener('click', exportTxt);
+    jumpUnanswered.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const idx = firstUnansweredIndex();
+      if(idx>=0){
+        state.index = idx;
+        questionView.classList.remove('hidden');
+        resultView.classList.add('hidden');
+        renderQuestion();
+      }
+    });
+
+    // Keyboard shortcuts: 1..5 = svar, ArrowLeft/Right = navigering, Enter = nästa
+    document.addEventListener('keydown', (e)=>{
+      if(!resultView.classList.contains('hidden')){
+        if(e.key === 'Enter'){ exportBtn.focus(); }
+        return;
+      }
+      if(['1','2','3','4','5'].includes(e.key)){
+        const val = parseInt(e.key,10);
+        state.answers[state.index] = val;
+        renderQuestion();
+        setTimeout(()=>next(), 120);
+      } else if(e.key === 'ArrowRight'){
+        next();
+      } else if(e.key === 'ArrowLeft'){
+        prev();
+      } else if(e.key === 'Enter'){
+        next();
+      }
+    });
+
+    // Init
+    renderQuestion();
+  </script>
+</body>
+</html>
